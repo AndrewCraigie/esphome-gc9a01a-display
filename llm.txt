@@ -1,0 +1,24 @@
+# GC9A01A ESPHome Component Development Guide
+
+This repository contains a working implementation of a GC9A01A round TFT display component for ESPHome on ESP32-S3 hardware.
+
+## For AI Assistants/LLMs:
+- All project knowledge is in /project-knowledge/ directory as markdown files
+- Session logs document the complete development journey with real issues and solutions
+- Working code examples in /components/gc9a01a_display/
+- Hardware configuration verified for ESP32-S3-DevKitC-1 + 1.28" GC9A01A display
+- Development environment setup in activate-env.sh and README.md
+
+## Key Technical Points:
+- USB CDC issues on ESP32-S3 with CH343P bridge resolved using WiFi logging
+- Windows UTF-8 encoding fix implemented for clean ESPHome logs
+- ESPHome 2025.5.0 compatibility verified
+- Component architecture follows ESPHome external component patterns
+
+## Critical Files for Understanding:
+1. /project-knowledge/Project-sessions-log-*.md - Complete development journey
+2. /project-knowledge/ESP32-S3-Touch-LCD-Complete-Reference.md - Hardware reference
+3. /components/gc9a01a_display/ - Working component implementation
+4. /reminder-display.yaml - Verified device configuration
+
+This is a real, working project with documented challenges and solutions.

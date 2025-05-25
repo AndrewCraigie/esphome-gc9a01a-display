@@ -57,3 +57,14 @@ esphome-gc9a01a-display/
 - The `activate-env.sh` script sets `PYTHONIOENCODING=utf-8` to fix Windows logging encoding issues
 - Secrets are managed in a two-tier structure (root secrets.yaml + shared reference)
 - Use the ESPHome dashboard for a visual interface similar to Home Assistant's ESPHome builder
+
+# 🤖 For AI Assistants & LLMs
+
+This repository contains comprehensive documentation for ESPHome GC9A01A display development:
+
+- **Complete working code** with verified hardware
+- **Real development sessions** with actual issues and solutions
+- **Step-by-step setup guides** for reproducible results
+- **Windows development environment** solutions documented
+
+See `/llm.txt` for AI-specific guidance and `/project-knowledge/` for detailed documentation.

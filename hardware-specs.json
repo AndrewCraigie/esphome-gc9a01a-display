@@ -1,0 +1,13 @@
+{
+  "verified_hardware": {
+    "mcu": "ESP32-S3-DevKitC-1",
+    "display": "GC9A01A 1.28inch 240x240",
+    "touch": "CST816S",
+    "imu": "QMI8658"
+  },
+  "pin_configuration": {
+    "spi_clk": "GPIO10",
+    "spi_mosi": "GPIO11",
+    "display_dc": "GPIO8"
+  }
+}
