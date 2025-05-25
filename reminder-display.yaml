@@ -1,0 +1,52 @@
+esphome:
+  name: reminder-display
+  friendly_name: reminder-display
+
+# Include all network/auth settings
+<<: !include shared/network.yaml
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: arduino
+
+# Your custom GC9A01A display component
+external_components:
+  - source: 
+      type: local
+      path: components
+    components: [gc9a01a_display]
+
+logger:
+  level: DEBUG
+  baud_rate: 0
+
+# Enable PSRAM for large framebuffer
+psram:
+  mode: quad
+  speed: 80MHz
+
+# SPI bus for display communication
+spi:
+  id: bus_spi
+  clk_pin: GPIO10
+  mosi_pin: GPIO11
+  miso_pin: GPIO12  # Include it for completeness even if not used
+
+display:
+  - platform: gc9a01a_display
+    id: lcd_display
+    update_interval: 1s
+    dc_pin: GPIO8
+    cs_pin: GPIO9
+    reset_pin: GPIO14
+    backlight_pin: GPIO2
+    spi_id: bus_spi
+    rotation: 0
+
+# switch:
+#   - platform: gpio
+#     pin: GPIO2
+#     name: "Backlight Switch"
+#     restore_mode: ALWAYS_ON
+

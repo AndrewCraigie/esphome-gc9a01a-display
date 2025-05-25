@@ -1,0 +1,19 @@
+# Network and Authentication Configuration
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  
+  # Enable fallback hotspot
+  ap:
+    ssid: "Reminder-Display"
+    password: !secret fallback_ap_password
+
+# Home Assistant API
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+# Over-The-Air updates
+ota:
+  - platform: esphome
+    password: !secret ota_password
