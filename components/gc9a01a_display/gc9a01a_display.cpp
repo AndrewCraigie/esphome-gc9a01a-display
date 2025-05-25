@@ -1,6 +1,7 @@
 #include "gc9a01a_display.h"
 #include "esphome/core/log.h"
 #include "esphome/core/helpers.h"
+#include "esphome/core/color.h"
 
 namespace esphome
 {
@@ -13,7 +14,6 @@ namespace esphome
         {
             ESP_LOGCONFIG(TAG, "Setting up GC9A01A display...");
 
-            // Initialize pins
             this->spi_setup();
 
             this->dc_pin_->setup();
@@ -28,28 +28,53 @@ namespace esphome
             if (this->backlight_pin_ != nullptr)
             {
                 this->backlight_pin_->setup();
-                this->backlight_pin_->digital_write(false);
-            }
-
-            // Hardware reset
-            if (this->reset_pin_ != nullptr)
-            {
-                this->reset_pin_->digital_write(false);
-                delay(10);
-                this->reset_pin_->digital_write(true);
-                delay(120);
-            }
-
-            this->init_display_();
-
-            // Turn on backlight
-            if (this->backlight_pin_ != nullptr)
-            {
                 this->backlight_pin_->digital_write(true);
             }
 
             this->is_ready_ = true;
-            ESP_LOGI(TAG, "Display initialization complete - ready: %s", this->is_ready_ ? "true" : "false");
+
+            // // Initialize pins
+            // this->spi_setup();
+
+            // this->dc_pin_->setup();
+            // this->dc_pin_->digital_write(false);
+
+            // if (this->reset_pin_ != nullptr)
+            // {
+            //     this->reset_pin_->setup();
+            //     this->reset_pin_->digital_write(true);
+            // }
+
+            // if (this->backlight_pin_ != nullptr)
+            // {
+            //     this->backlight_pin_->setup();
+            //     this->backlight_pin_->digital_write(false);
+            // }
+
+            // // Hardware reset
+            // if (this->reset_pin_ != nullptr)
+            // {
+            //     this->reset_pin_->digital_write(false);
+            //     delay(10);
+            //     this->reset_pin_->digital_write(true);
+            //     delay(120);
+            // }
+
+            // this->init_display_();
+
+            // // Turn on backlight
+            // if (this->backlight_pin_ != nullptr)
+            // {
+            //     this->backlight_pin_->digital_write(true);
+            // }
+
+            // this->is_ready_ = true;
+            // ESP_LOGI(TAG, "Display initialization complete - ready: %s", this->is_ready_ ? "true" : "false");
+
+            // // Intial fill with red
+            // ESP_LOGI(TAG, "Testing display with red fill...");
+            // Color red_color = Color(255, 0, 0);
+            // this->fill(red_color);
         }
 
         void GC9A01ADisplay::update()
@@ -61,6 +86,46 @@ namespace esphome
             {
                 ESP_LOGW(TAG, "Display not ready, skipping update");
                 return;
+            }
+
+            // One-time minimal test
+            static bool minimal_test_done = false;
+            static uint32_t test_delay_counter = 0;
+
+            if (!minimal_test_done)
+            {
+                test_delay_counter++;
+
+                if (test_delay_counter == 10)
+                { // Wait 10 seconds
+                    ESP_LOGI(TAG, "=== MINIMAL PIN CONTROL TEST ===");
+
+                    // Test DC pin control
+                    ESP_LOGI(TAG, "DC pin current state: %s", this->dc_pin_->digital_read() ? "HIGH" : "LOW");
+
+                    this->dc_pin_->digital_write(true);
+                    ESP_LOGI(TAG, "After setting DC HIGH: %s", this->dc_pin_->digital_read() ? "HIGH" : "LOW");
+
+                    this->dc_pin_->digital_write(false);
+                    ESP_LOGI(TAG, "After setting DC LOW: %s", this->dc_pin_->digital_read() ? "HIGH" : "LOW");
+
+                    // Test Reset pin control
+                    if (this->reset_pin_ != nullptr)
+                    {
+                        ESP_LOGI(TAG, "Reset pin current state: %s", this->reset_pin_->digital_read() ? "HIGH" : "LOW");
+                        this->reset_pin_->digital_write(false);
+                        ESP_LOGI(TAG, "After setting Reset LOW: %s", this->reset_pin_->digital_read() ? "HIGH" : "LOW");
+                        this->reset_pin_->digital_write(true);
+                        ESP_LOGI(TAG, "After setting Reset HIGH: %s", this->reset_pin_->digital_read() ? "HIGH" : "LOW");
+                    }
+
+                    ESP_LOGI(TAG, "=== MINIMAL TEST COMPLETE ===");
+                    minimal_test_done = true;
+                }
+                else
+                {
+                    ESP_LOGI(TAG, "Minimal test countdown: %d seconds", 10 - test_delay_counter);
+                }
             }
 
             // ESP_LOGD(TAG, "Starting do_update_()");
@@ -77,10 +142,6 @@ namespace esphome
                 ESP_LOGI(TAG, "  Ready State: %s", this->is_ready_ ? "true" : "false");
                 ESP_LOGI(TAG, "  Display Dimensions: %dx%d", this->get_width_internal(), this->get_height_internal());
                 ESP_LOGI(TAG, "  Display Type: %d", (int)this->get_display_type());
-
-                ESP_LOGI(TAG, "SPI Status: TODO implment SPI diagnostics");
-                // Add SPI-related diagnostics here if needed
-
                 ESP_LOGI(TAG, "=== End Diagnostic Report ===");
             }
         }
@@ -101,19 +162,27 @@ namespace esphome
 
         void GC9A01ADisplay::fill(Color color)
         {
-            ESP_LOGD(TAG, "Fill called with color R:%d G:%d B:%d, ready: %s", color.red, color.green, color.blue,
-                     this->is_ready_ ? "true" : "false");
+            ESP_LOGI(TAG, "Fill called with color R:%d G:%d B:%d, ready: %s",
+                     color.red, color.green, color.blue, this->is_ready_ ? "true" : "false");
 
             if (!this->is_ready_)
                 return;
 
             uint16_t color565 = this->color_to_565_(color);
-            ESP_LOGD(TAG, "Filling display with color565: 0x%04X", color565);
+            ESP_LOGI(TAG, "Converted to RGB565: 0x%04X", color565);
+
+            // Debug: Log what we're about to do
+            ESP_LOGI(TAG, "Setting address window to full screen: 0,0 to %d,%d",
+                     GC9A01A_WIDTH - 1, GC9A01A_HEIGHT - 1);
 
             this->set_addr_window_(0, 0, GC9A01A_WIDTH - 1, GC9A01A_HEIGHT - 1);
+
+            ESP_LOGI(TAG, "Writing %d pixels of color 0x%04X",
+                     GC9A01A_WIDTH * GC9A01A_HEIGHT, color565);
+
             this->write_color_(color565, GC9A01A_WIDTH * GC9A01A_HEIGHT);
 
-            ESP_LOGD(TAG, "Fill operation complete");
+            ESP_LOGI(TAG, "Fill operation complete");
         }
 
         void GC9A01ADisplay::draw_absolute_pixel_internal(int x, int y, Color color)
