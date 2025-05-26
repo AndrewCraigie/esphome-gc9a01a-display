@@ -1,0 +1,16 @@
+{
+    "servers": {
+        "filesystem": {
+            "command": "docker",
+            "args": [
+                "run",
+                "-i",
+                "--rm",
+                "-v",
+                "D:/dev/knowledge:/projects/knowledge",
+                "mcp/filesystem",
+                "/projects"
+            ]
+        }
+    }
+}
