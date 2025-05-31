@@ -38,14 +38,12 @@ namespace esphome
 
         void GC9A01ADisplay::update()
         {
-            // Lifecycle logging - commented out to reduce spam
-            // ESP_LOGD(TAG, "Update called - is_ready: %s", this->is_ready_ ? "true" : "false");
 
             if (!this->is_ready_)
             {
                 ESP_LOGW(TAG, "Display not ready, skipping update");
                 return;
-            } // Time-spread GPIO diagnostics - test state persistence over time
+            }
 
             if (this->get_component_state() == 0x03)
             {
@@ -87,9 +85,32 @@ namespace esphome
                 }
             }
 
-            // ESP_LOGD(TAG, "Starting do_update_()");
-            this->do_update_();
-            // ESP_LOGD(TAG, "Update cycle complete");
+            // ESPHome DisplayBuffer Integration Control:
+            //
+            // The do_update_() call is the bridge between ESPHome's high-level drawing framework
+            // and our low-level hardware control methods. Here's how it works:
+            //
+            // WITH YAML lambda content (e.g., it.print(), it.line(), etc.):
+            //   1. ESPHome draws to internal DisplayBuffer pixel array
+            //   2. do_update_() compares current buffer with previous frame
+            //   3. For each changed pixel, calls draw_absolute_pixel_internal(x, y, color)
+            //   4. Our implementation converts pixels to GC9A01A hardware commands
+            //   5. Result: YAML drawing commands appear on physical display
+            //
+            // WITHOUT YAML lambda content (current state):
+            //   1. DisplayBuffer remains empty (no drawing commands executed)
+            //   2. do_update_() finds zero changed pixels
+            //   3. draw_absolute_pixel_internal() is never called
+            //   4. No visual effect - call is redundant
+            //
+            // CURRENT TROUBLESHOOTING STRATEGY:
+            //   - Focus on direct C++ hardware methods (fill(), write_color_(), etc.)
+            //   - Verify SPI communication and display controller before ESPHome integration
+            //   - All current visual output comes from setup() -> fill(red_color)
+            //   - Once hardware is proven working, re-enable for YAML lambda support
+            //
+            // Temporarily disabled while troubleshooting direct hardware methods
+            // this->do_update_();
 
             // Diagnostic logging every 20 updates
             this->update_counter_++;
