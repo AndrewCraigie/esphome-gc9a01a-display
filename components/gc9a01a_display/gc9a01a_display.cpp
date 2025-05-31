@@ -9,72 +9,31 @@ namespace esphome
     {
 
         static const char *const TAG = "gc9a01a_display";
-
         void GC9A01ADisplay::setup()
         {
-            ESP_LOGCONFIG(TAG, "Setting up GC9A01A display...");
 
+            // Critical: Initialize SPI delegate for device communication
+            // SPIDevice starts with a dummy delegate that only logs errors
+            // spi_setup() replaces the dummy with a functional delegate from the SPI component
+            // Without this call, all SPI operations fail with "SPIDevice not initialised" error
+            // See: SPIClient::spi_setup() -> register_device() for delegate replacement
             this->spi_setup();
 
+            // Critical: Configure DC pin as hardware output
+            // ESPHome sets pin flags during YAML parsing, but setup() applies them to ESP32 GPIO registers
+            // Without this call, the pin remains unconfigured and digital_write() will fail
+            // See: ESP32InternalGPIOPin::setup() -> gpio_config() for hardware initialization
             this->dc_pin_->setup();
-            this->dc_pin_->digital_write(false);
 
-            if (this->reset_pin_ != nullptr)
-            {
-                this->reset_pin_->setup();
-                this->reset_pin_->digital_write(true);
-            }
+            // Initialize display
+            this->init_display_();
 
-            if (this->backlight_pin_ != nullptr)
-            {
-                this->backlight_pin_->setup();
-                this->backlight_pin_->digital_write(true);
-            }
-
+            // Set ready state
             this->is_ready_ = true;
 
-            // // Initialize pins
-            // this->spi_setup();
-
-            // this->dc_pin_->setup();
-            // this->dc_pin_->digital_write(false);
-
-            // if (this->reset_pin_ != nullptr)
-            // {
-            //     this->reset_pin_->setup();
-            //     this->reset_pin_->digital_write(true);
-            // }
-
-            // if (this->backlight_pin_ != nullptr)
-            // {
-            //     this->backlight_pin_->setup();
-            //     this->backlight_pin_->digital_write(false);
-            // }
-
-            // // Hardware reset
-            // if (this->reset_pin_ != nullptr)
-            // {
-            //     this->reset_pin_->digital_write(false);
-            //     delay(10);
-            //     this->reset_pin_->digital_write(true);
-            //     delay(120);
-            // }
-
-            // this->init_display_();
-
-            // // Turn on backlight
-            // if (this->backlight_pin_ != nullptr)
-            // {
-            //     this->backlight_pin_->digital_write(true);
-            // }
-
-            // this->is_ready_ = true;
-            // ESP_LOGI(TAG, "Display initialization complete - ready: %s", this->is_ready_ ? "true" : "false");
-
-            // // Intial fill with red
-            // ESP_LOGI(TAG, "Testing display with red fill...");
-            // Color red_color = Color(255, 0, 0);
-            // this->fill(red_color);
+            // Test with red fill
+            Color red_color = Color(255, 0, 0, 0); // Red, Green, Blue
+            this->fill(red_color);
         }
 
         void GC9A01ADisplay::update()
@@ -86,45 +45,45 @@ namespace esphome
             {
                 ESP_LOGW(TAG, "Display not ready, skipping update");
                 return;
+            } // Time-spread GPIO diagnostics - test state persistence over time
+
+            if (this->get_component_state() == 0x03)
+            {
+                ESP_LOGE(TAG, "SPI component setup failed");
+                return;
             }
 
-            // One-time minimal test
-            static bool minimal_test_done = false;
+            static bool gpio_diagnostics_done = false;
             static uint32_t test_delay_counter = 0;
+            static bool initial_dc_state = false;
 
-            if (!minimal_test_done)
+            if (!gpio_diagnostics_done)
             {
                 test_delay_counter++;
 
-                if (test_delay_counter == 10)
-                { // Wait 10 seconds
-                    ESP_LOGI(TAG, "=== MINIMAL PIN CONTROL TEST ===");
-
-                    // Test DC pin control
-                    ESP_LOGI(TAG, "DC pin current state: %s", this->dc_pin_->digital_read() ? "HIGH" : "LOW");
-
-                    this->dc_pin_->digital_write(true);
-                    ESP_LOGI(TAG, "After setting DC HIGH: %s", this->dc_pin_->digital_read() ? "HIGH" : "LOW");
-
-                    this->dc_pin_->digital_write(false);
-                    ESP_LOGI(TAG, "After setting DC LOW: %s", this->dc_pin_->digital_read() ? "HIGH" : "LOW");
-
-                    // Test Reset pin control
-                    if (this->reset_pin_ != nullptr)
-                    {
-                        ESP_LOGI(TAG, "Reset pin current state: %s", this->reset_pin_->digital_read() ? "HIGH" : "LOW");
-                        this->reset_pin_->digital_write(false);
-                        ESP_LOGI(TAG, "After setting Reset LOW: %s", this->reset_pin_->digital_read() ? "HIGH" : "LOW");
-                        this->reset_pin_->digital_write(true);
-                        ESP_LOGI(TAG, "After setting Reset HIGH: %s", this->reset_pin_->digital_read() ? "HIGH" : "LOW");
-                    }
-
-                    ESP_LOGI(TAG, "=== MINIMAL TEST COMPLETE ===");
-                    minimal_test_done = true;
-                }
-                else
+                if (test_delay_counter == 20)
                 {
-                    ESP_LOGI(TAG, "Minimal test countdown: %d seconds", 10 - test_delay_counter);
+                    ESP_LOGD(TAG, "Starting SPI transaction test");
+
+                    this->enable();
+
+                    // Test write operation
+                    uint8_t test_cmd = 0x9F; // Example: Read ID command
+                    this->write_byte(test_cmd);
+                    ESP_LOGD(TAG, "Sent command: 0x%02X", test_cmd);
+
+                    // Test read operation
+                    uint8_t buffer[3];
+                    this->read_array(buffer, sizeof(buffer));
+                    ESP_LOGD(TAG, "Read response: 0x%02X 0x%02X 0x%02X",
+                             buffer[0], buffer[1], buffer[2]);
+
+                    this->disable();
+                    ESP_LOGD(TAG, "SPI transaction test complete");
+                }
+                else if (test_delay_counter < 20)
+                {
+                    ESP_LOGI(TAG, "GPIO test countdown: %d updates until start", 20 - test_delay_counter);
                 }
             }
 
@@ -484,28 +443,42 @@ namespace esphome
         void GC9A01ADisplay::write_command_(uint8_t cmd)
         {
             ESP_LOGV(TAG, "Writing command: 0x%02X", cmd);
-            this->enable_();
-            this->dc_pin_->digital_write(false);
-            this->write_byte(cmd);
-            this->disable_();
+
+            // Standard SPI display protocol sequence verified in ESPHome codebase:
+            // 1. All ESPHome display components (ST7789, ILI9XXX, etc.) use this exact pattern
+            // 2. DC pin must be stable BEFORE CS assertion per SPI display timing requirements
+            // 3. ESP32 gpio_set_level() provides immediate hardware pin control for proper setup/hold times
+            // 4. Each transaction is atomic: DC->CS->DATA->CS ensures clean command/data separation
+            // Pattern aligned with how SPI is sequenced and timed in working Arduino code:
+            this->dc_pin_->digital_write(false); // 1. DC pin FIRST (command mode)
+            this->enable_();                     // 2. CS pin SECOND (select device)
+            this->write_byte(cmd);               // 3. Send command
+            this->disable_();                    // 4. CS pin release (deselect device)
         }
 
         void GC9A01ADisplay::write_data_(uint8_t data)
         {
             ESP_LOGV(TAG, "Writing data: 0x%02X", data);
-            this->enable_();
-            this->dc_pin_->digital_write(true);
-            this->write_byte(data);
-            this->disable_();
+
+            // Standard SPI display protocol sequence verified in ESPHome codebase:
+            // 1. All ESPHome display components (ST7789, ILI9XXX, etc.) use this exact pattern
+            // 2. DC pin must be stable BEFORE CS assertion per SPI display timing requirements
+            // 3. ESP32 gpio_set_level() provides immediate hardware pin control for proper setup/hold times
+            // 4. Each transaction is atomic: DC->CS->DATA->CS ensures clean command/data separation
+            // Pattern aligned with how SPI is sequenced and timed in working Arduino code:
+            this->dc_pin_->digital_write(true); // 1. DC pin FIRST (data mode)
+            this->enable_();                    // 2. CS pin SECOND (select device)
+            this->write_byte(data);             // 3. Send data
+            this->disable_();                   // 4. CS pin release (deselect device)
         }
 
         void GC9A01ADisplay::write_data_16_(uint16_t data)
         {
-            this->enable_();
-            this->dc_pin_->digital_write(true);
-            this->write_byte(data >> 8);
-            this->write_byte(data & 0xFF);
-            this->disable_();
+            this->dc_pin_->digital_write(true); // Set DC HIGH for data mode (consistent with write_data_() pattern)
+            this->enable_();                    // Assert CS to start SPI transaction
+            this->write_byte(data >> 8);        // Send high byte (bits 15-8) first - big-endian MSB transmission
+            this->write_byte(data & 0xFF);      // Send low byte (bits 7-0) second - completes 16-bit value
+            this->disable_();                   // Deassert CS to end transaction
         }
 
         void GC9A01ADisplay::write_color_(uint16_t color, uint32_t count)

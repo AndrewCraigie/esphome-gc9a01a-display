@@ -8,9 +8,12 @@
                 "--rm",
                 "-v",
                 "D:/dev/knowledge:/projects/knowledge",
+                "-v",
+                "D:/Documents/Arduino/examples/esp32s3-touch-lcd:/projects/arduino",
                 "mcp/filesystem",
                 "/projects"
-            ]
+            ],
+            "env": {}
         }
     }
 }
