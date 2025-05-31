@@ -24,6 +24,9 @@ MODELS = {
     GC9A01A_MODEL: GC9A01A,
 }
 
+# The GC9A01A display requires a CS (Chip Select) pin for proper SPI communication.
+# Without this, ESPHome wouldn't enforce CS pin configuration in the YAML,
+# leading to potential communication failures.
 CONFIG_SCHEMA = cv.All(
     display.FULL_DISPLAY_SCHEMA.extend(
         {
@@ -33,7 +36,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_BACKLIGHT_PIN): pins.gpio_output_pin_schema,
         }
     )
-    .extend(spi.spi_device_schema(cs_pin_required=False)),
+    .extend(spi.spi_device_schema(cs_pin_required=True)),
     cv.has_at_most_one_key(CONF_PAGES, CONF_LAMBDA),
 )
 

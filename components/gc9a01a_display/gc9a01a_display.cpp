@@ -483,19 +483,21 @@ namespace esphome
 
         void GC9A01ADisplay::write_color_(uint16_t color, uint32_t count)
         {
-            this->enable_();
-            this->dc_pin_->digital_write(true);
+            //Fills a region of the display with the same color by writing multiple identical RGB565 pixels.
 
-            uint8_t color_high = color >> 8;
-            uint8_t color_low = color & 0xFF;
+            this->dc_pin_->digital_write(true); // Set data mode (pixel data follows)
+            this->enable_();                    // Start SPI transaction
 
-            for (uint32_t i = 0; i < count; i++)
+            uint8_t color_high = color >> 8;  // Extract high byte of RGB565
+            uint8_t color_low = color & 0xFF; // Extract low byte of RGB565
+
+            for (uint32_t i = 0; i < count; i++) // Repeat for each pixel
             {
-                this->write_byte(color_high);
-                this->write_byte(color_low);
+                this->write_byte(color_high); // Send high byte
+                this->write_byte(color_low);  // Send low byte
             }
 
-            this->disable_();
+            this->disable_(); // End SPI transaction
         }
 
         uint16_t GC9A01ADisplay::color_to_565_(Color color)
@@ -504,16 +506,21 @@ namespace esphome
             uint16_t g = (color.green & 0xFC) << 3;
             uint16_t b = color.blue >> 3;
             return r | g | b;
-        }
-
+        }        
+        
         void GC9A01ADisplay::enable_()
         {
-            // CS pin control is handled by SPI device base class
+            // Use SPIDevice base class CS pin control
+            // The CS pin is automatically managed by the SPI device when write_byte() is called
+            // within an enable()/disable() transaction block
+            this->SPIDevice::enable();
         }
 
         void GC9A01ADisplay::disable_()
         {
-            // CS pin control is handled by SPI device base class
+            // Use SPIDevice base class CS pin control  
+            // Properly releases CS pin to end the SPI transaction
+            this->SPIDevice::disable();
         }
 
     } // namespace gc9a01a_display
