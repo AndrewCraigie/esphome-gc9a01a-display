@@ -29,7 +29,6 @@ namespace esphome
             // This is optional, but recommended for displays with backlight control
             if (this->backlight_pin_ != nullptr)
             {
-                this->backlight_pin_->pin_mode(gpio::FLAG_OUTPUT);
                 this->backlight_pin_->setup();
                 this->backlight_pin_->digital_write(true);
             }
