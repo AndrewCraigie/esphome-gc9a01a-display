@@ -29,6 +29,7 @@ namespace esphome
             // This is optional, but recommended for displays with backlight control
             if (this->backlight_pin_ != nullptr)
             {
+                this->backlight_pin_->pin_mode(gpio::FLAG_OUTPUT);
                 this->backlight_pin_->setup();
                 this->backlight_pin_->digital_write(true);
             }
@@ -131,6 +132,47 @@ namespace esphome
                 ESP_LOGI(TAG, "  Ready State: %s", this->is_ready_ ? "true" : "false");
                 ESP_LOGI(TAG, "  Display Dimensions: %dx%d", this->get_width_internal(), this->get_height_internal());
                 ESP_LOGI(TAG, "  Display Type: %d", (int)this->get_display_type());
+
+                // Add backlight pin diagnostics here:
+                ESP_LOGI(TAG, "Backlight Pin Status:");
+                if (this->backlight_pin_ != nullptr)
+                {
+                    bool backlight_state = this->backlight_pin_->digital_read();
+
+                    ESP_LOGI(TAG, "  Pin Configured: YES");
+                    ESP_LOGI(TAG, "  Pin Info: %s", this->backlight_pin_->dump_summary().c_str());
+                    ESP_LOGI(TAG, "  Current State: %s", backlight_state ? "HIGH" : "LOW");
+
+                    // Test if it's an internal pin for more details
+                    if (this->backlight_pin_->is_internal())
+                    {
+                        InternalGPIOPin *internal_pin = static_cast<InternalGPIOPin *>(this->backlight_pin_);
+                        ESP_LOGI(TAG, "  Pin Number: %d", internal_pin->get_pin());
+                        ESP_LOGI(TAG, "  Is Inverted: %s", internal_pin->is_inverted() ? "YES" : "NO");
+                    }
+
+                    // Test writing again to confirm:
+                    ESP_LOGI(TAG, "  Testing: Setting pin HIGH again...");
+                    this->backlight_pin_->digital_write(true);
+                    delay(10); // Small delay
+                    bool new_state = this->backlight_pin_->digital_read();
+                    ESP_LOGI(TAG, "  After write(true): %s", new_state ? "HIGH" : "LOW");
+
+                    if (backlight_state)
+                    {
+                        ESP_LOGI(TAG, "  Status: CORRECT - Backlight should be illuminated");
+                    }
+                    else
+                    {
+                        ESP_LOGW(TAG, "  Status: PROBLEM - Backlight pin is LOW, display may be dark");
+                    }
+                }
+                else
+                {
+                    ESP_LOGW(TAG, "  Pin Configured: NO - backlight_pin_ is nullptr");
+                    ESP_LOGW(TAG, "  Status: PROBLEM - No backlight control available");
+                }
+
                 ESP_LOGI(TAG, "=== End Diagnostic Report ===");
             }
         }
