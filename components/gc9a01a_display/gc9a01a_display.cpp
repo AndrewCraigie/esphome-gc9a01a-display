@@ -483,7 +483,7 @@ namespace esphome
 
         void GC9A01ADisplay::write_color_(uint16_t color, uint32_t count)
         {
-            //Fills a region of the display with the same color by writing multiple identical RGB565 pixels.
+            // Fills a region of the display with the same color by writing multiple identical RGB565 pixels.
 
             this->dc_pin_->digital_write(true); // Set data mode (pixel data follows)
             this->enable_();                    // Start SPI transaction
@@ -502,12 +502,17 @@ namespace esphome
 
         uint16_t GC9A01ADisplay::color_to_565_(Color color)
         {
-            uint16_t r = (color.red & 0xF8) << 8;
-            uint16_t g = (color.green & 0xFC) << 3;
-            uint16_t b = color.blue >> 3;
-            return r | g | b;
-        }        
-        
+            // Use the same RGB565 conversion logic as ESPHome's official ColorUtil::color_to_565()
+            // This ensures consistency with other ESPHome display components
+            uint16_t red_color = (color.red * 31) / 255;     // Scale 8-bit red to 5-bit (0-31)
+            uint16_t green_color = (color.green * 63) / 255; // Scale 8-bit green to 6-bit (0-63)
+            uint16_t blue_color = (color.blue * 31) / 255;   // Scale 8-bit blue to 5-bit (0-31)
+
+            // RGB565 format: RRRRR GGGGGG BBBBB
+            // Red: bits 15-11, Green: bits 10-5, Blue: bits 4-0
+            return (red_color << 11) | (green_color << 5) | blue_color;
+        }
+
         void GC9A01ADisplay::enable_()
         {
             // Use SPIDevice base class CS pin control
@@ -518,7 +523,7 @@ namespace esphome
 
         void GC9A01ADisplay::disable_()
         {
-            // Use SPIDevice base class CS pin control  
+            // Use SPIDevice base class CS pin control
             // Properly releases CS pin to end the SPI transaction
             this->SPIDevice::disable();
         }
