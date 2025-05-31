@@ -43,10 +43,3 @@ display:
     backlight_pin: GPIO2
     spi_id: bus_spi
     rotation: 0
-
-# switch:
-#   - platform: gpio
-#     pin: GPIO2
-#     name: "Backlight Switch"
-#     restore_mode: ALWAYS_ON
-

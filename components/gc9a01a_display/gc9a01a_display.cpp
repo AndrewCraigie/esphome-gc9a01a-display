@@ -25,6 +25,14 @@ namespace esphome
             // See: ESP32InternalGPIOPin::setup() -> gpio_config() for hardware initialization
             this->dc_pin_->setup();
 
+            // Explicitly setup backlight pin if provided
+            // This is optional, but recommended for displays with backlight control
+            if (this->backlight_pin_ != nullptr)
+            {
+                this->backlight_pin_->setup();
+                this->backlight_pin_->digital_write(true);
+            }
+
             // Initialize display
             this->init_display_();
 
@@ -61,6 +69,7 @@ namespace esphome
 
                 if (test_delay_counter == 20)
                 {
+
                     ESP_LOGD(TAG, "Starting SPI transaction test");
 
                     this->enable();
